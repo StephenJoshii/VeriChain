@@ -1,0 +1,17 @@
+# Dependencies
+/node_modules
+/venv
+
+# Build artifacts
+/artifacts
+/cache
+/typechain-types
+
+# Python
+__pycache__/
+*.pyc
+
+# Misc
+.env
+coverage.json
+coverage/
