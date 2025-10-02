@@ -1,6 +1,6 @@
 # Dependencies
 /node_modules
-/venv
+/backend/venv
 
 # Build artifacts
 /artifacts

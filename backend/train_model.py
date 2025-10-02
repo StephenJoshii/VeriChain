@@ -2,7 +2,7 @@ import face_recognition
 import os
 import pickle
 import numpy as np
-from PIL import Image # <-- Import the Image library
+from PIL import Image 
 
 # --- Constants ---
 DATASET_DIR = 'dataset'
