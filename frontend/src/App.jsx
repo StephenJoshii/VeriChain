@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
-import contractAbi from './contract-abi.json'; // Import the ABI
+import contractAbi from './contract-abi.json';
 
 // --- Configuration ---
 const contractAddress = "0x3b3B89a9607830714cDdc549178825C13e255e3A";
@@ -9,11 +9,12 @@ const aiApiUrl = "http://127.0.0.1:5001/validate";
 function App() {
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null);
+  const [tokens, setTokens] = useState([]); // <-- New state for storing token data
   const [status, setStatus] = useState("Not connected.");
   const videoRef = useRef(null);
 
-  // Function to connect the wallet
   const connectWallet = async () => {
+    // ... (connectWallet function is the same as before)
     if (window.ethereum) {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
@@ -33,8 +34,38 @@ function App() {
     }
   };
 
-  // Function to start the webcam
+  // --- NEW FUNCTION TO FETCH TOKENS ---
+  useEffect(() => {
+    const fetchTokens = async () => {
+      if (contract && account) {
+        setStatus("Fetching your tokens...");
+        try {
+          const balance = await contract.balanceOf(account);
+          const fetchedTokens = [];
+
+          for (let i = 0; i < balance; i++) {
+            const tokenId = await contract.tokenOfOwnerByIndex(account, i);
+            let tokenURI = await contract.tokenURI(tokenId);
+            
+            // For this project, we'll just display the placeholder URI
+            fetchedTokens.push({ id: tokenId.toString(), uri: tokenURI });
+          }
+
+          setTokens(fetchedTokens);
+          setStatus("Your tokens are displayed below.");
+        } catch (error) {
+          console.error("Could not fetch tokens:", error);
+          setStatus("Could not fetch tokens.");
+        }
+      }
+    };
+
+    fetchTokens();
+  }, [contract, account]); // This effect runs when the contract or account changes
+
+
   const startCamera = async () => {
+    // ... (startCamera function is the same as before)
     setStatus("Starting camera... Please allow permission.");
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       try {
@@ -49,22 +80,18 @@ function App() {
     }
   };
   
-  // The main function for minting
   const handleMint = async () => {
+    // ... (handleMint function is the same as before)
     if (!videoRef.current || !videoRef.current.srcObject) {
       alert("Please start the camera first.");
       return;
     }
-
-    // 1. Capture image from webcam
     setStatus("Capturing image...");
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
     const imageData = canvas.toDataURL('image/jpeg');
-
-    // 2. Send to AI for validation
     setStatus("Validating face with AI...");
     try {
       const response = await fetch(aiApiUrl, {
@@ -73,14 +100,11 @@ function App() {
         body: JSON.stringify({ image: imageData }),
       });
       const result = await response.json();
-
       if (result.success) {
         setStatus("Face validated! Please approve the transaction in MetaMask...");
-        // 3. If AI validation is successful, mint the token
-        const metadataURI = `ipfs://token-for-${account}`; // Placeholder URI
+        const metadataURI = `ipfs://token-for-${account}-${new Date().getTime()}`;
         const tx = await contract.safeMint(account, metadataURI);
-        await tx.wait(); // Wait for the transaction to be mined
-        
+        await tx.wait();
         setStatus(`✅ Token minted successfully! Tx: ${tx.hash.substring(0, 10)}...`);
       } else {
         setStatus("❌ Face validation failed. Please try again.");
@@ -107,6 +131,23 @@ function App() {
           </div>
           <button onClick={startCamera} style={{ marginRight: '10px' }}>Start Camera</button>
           <button onClick={handleMint}>Validate Face & Mint Token</button>
+
+          {/* --- NEW SECTION TO DISPLAY TOKENS --- */}
+          <div style={{ marginTop: '40px' }}>
+            <h2>Your Digital Assets</h2>
+            {tokens.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
+                {tokens.map(token => (
+                  <div key={token.id} style={{ border: '1px solid #ccc', padding: '10px', borderRadius: '5px', width: '200px' }}>
+                    <p><strong>Token ID:</strong> {token.id}</p>
+                    <p style={{ wordWrap: 'break-word' }}><strong>URI:</strong> {token.uri}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>You do not own any tokens yet.</p>
+            )}
+          </div>
         </div>
       )}
     </div>
