@@ -4,7 +4,7 @@ import os
 # --- Constants ---
 FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 OUTPUT_DIR = 'dataset'
-NUM_IMAGES = 30 # Number of images to collect
+NUM_IMAGES = 50 # Number of images to collect
 USER_NAME = 'user' # Folder name for the images
 
 def collect_face_data():

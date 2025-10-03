@@ -1,5 +1,6 @@
 import flask
 from flask import request, jsonify
+from flask_cors import CORS 
 import face_recognition
 import pickle
 import numpy as np
@@ -7,6 +8,7 @@ import base64
 import cv2
 
 app = flask.Flask(__name__)
+CORS(app)
 
 # --- Load the saved encodings ---
 print("Loading known face encodings...")
