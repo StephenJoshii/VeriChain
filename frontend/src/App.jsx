@@ -1,211 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
-import { ethers } from 'ethers';
-
-// MUI Components
-import { Container, Box, Divider, Button, ButtonGroup } from '@mui/material';
-
-// Our Components
+import { Container, Box, Divider, ButtonGroup, Button } from '@mui/material';
 import Header from './components/Header';
 import MintingUI from './components/MintingUI';
 import TokenGallery from './components/TokenGallery';
 import RegistrationUI from './components/RegistrationUI';
+import { useApp } from './hooks/useApp'; // <-- Import the custom hook
 import './App.css'; 
 
-// --- ABI EMBEDDED DIRECTLY ---
-const contractAbi = [
-  { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
-  { "inputs": [], "name": "ERC721EnumerableForbiddenBatchMint", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "sender", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" }, { "internalType": "address", "name": "owner", "type": "address" } ], "name": "ERC721IncorrectOwner", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "operator", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "ERC721InsufficientApproval", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "approver", "type": "address" } ], "name": "ERC721InvalidApprover", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "operator", "type": "address" } ], "name": "ERC721InvalidOperator", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" } ], "name": "ERC721InvalidOwner", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "receiver", "type": "address" } ], "name": "ERC721InvalidReceiver", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "sender", "type": "address" } ], "name": "ERC721InvalidSender", "type": "error" },
-  { "inputs": [ { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "ERC721NonexistentToken", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" }, { "internalType": "uint256", "name": "index", "type": "uint256" } ], "name": "ERC721OutOfBoundsIndex", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" } ], "name": "OwnableInvalidOwner", "type": "error" },
-  { "inputs": [ { "internalType": "address", "name": "account", "type": "address" } ], "name": "OwnableUnauthorizedAccount", "type": "error" },
-  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "owner", "type": "address" }, { "indexed": true, "internalType": "address", "name": "approved", "type": "address" }, { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "Approval", "type": "event" },
-  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "owner", "type": "address" }, { "indexed": true, "internalType": "address", "name": "operator", "type": "address" }, { "indexed": false, "internalType": "bool", "name": "approved", "type": "bool" } ], "name": "ApprovalForAll", "type": "event" },
-  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "previousOwner", "type": "address" }, { "indexed": true, "internalType": "address", "name": "newOwner", "type": "address" } ], "name": "OwnershipTransferred", "type": "event" },
-  { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "address", "name": "from", "type": "address" }, { "indexed": true, "internalType": "address", "name": "to", "type": "address" }, { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "Transfer", "type": "event" },
-  { "inputs": [ { "internalType": "address", "name": "to", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "approve", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" } ], "name": "balanceOf", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "getApproved", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" }, { "internalType": "address", "name": "operator", "type": "address" } ], "name": "isApprovedForAll", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "name", "outputs": [ { "internalType": "string", "name": "", "type": "string" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "owner", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "ownerOf", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "renounceOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "to", "type": "address" }, { "internalType": "string", "name": "uri", "type": "string" } ], "name": "safeMint", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "from", "type": "address" }, { "internalType": "address", "name": "to", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "safeTransferFrom", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "from", "type": "address" }, { "internalType": "address", "name": "to", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" }, { "internalType": "bytes", "name": "data", "type": "bytes" } ], "name": "safeTransferFrom", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "operator", "type": "address" }, { "internalType": "bool", "name": "approved", "type": "bool" } ], "name": "setApprovalForAll", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "bytes4", "name": "interfaceId", "type": "bytes4" } ], "name": "supportsInterface", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "symbol", "outputs": [ { "internalType": "string", "name": "", "type": "string" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "uint256", "name": "index", "type": "uint256" } ], "name": "tokenByIndex", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "owner", "type": "address" }, { "internalType": "uint256", "name": "index", "type": "uint256" } ], "name": "tokenOfOwnerByIndex", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "tokenURI", "outputs": [ { "internalType": "string", "name": "", "type": "string" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "totalSupply", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "from", "type": "address" }, { "internalType": "address", "name": "to", "type": "address" }, { "internalType": "uint256", "name": "tokenId", "type": "uint256" } ], "name": "transferFrom", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-  { "inputs": [ { "internalType": "address", "name": "newOwner", "type": "address" } ], "name": "transferOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function" }
-];
-
-// --- Configuration ---
-const contractAddress = "0x11625F2a2c4D5D4D06E1c1a81411aF65faa0d9ef"; // <-- PASTE YOUR NEWEST ADDRESS HERE
-const aiApiUrl = "http://127.0.0.1:5001";
-
 function App() {
-  const [account, setAccount] = useState(null);
-  const [contract, setContract] = useState(null);
-  const [tokens, setTokens] = useState([]);
-  const [status, setStatus] = useState("Not connected.");
-  const [isLoading, setIsLoading] = useState(false);
-  const videoRef = useRef(null);
-
-  const [view, setView] = useState('mint');
-  const [username, setUsername] = useState('');
-  const [snapshots, setSnapshots] = useState([]);
-  const [isRegistering, setIsRegistering] = useState(false);
-
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const address = await signer.getAddress();
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-        
-        setAccount(address);
-        setContract(contractInstance);
-        setStatus("Wallet connected. Ready to mint.");
-      } catch (error) {
-        console.error("Connection failed", error);
-        setStatus("Connection failed.");
-      }
-    } else {
-      alert("Please install MetaMask!");
-    }
-  };
-
-  useEffect(() => {
-    const fetchTokens = async () => {
-      if (contract && account) {
-        setStatus("Fetching your tokens...");
-        try {
-          const balance = await contract.balanceOf(account);
-          const fetchedTokens = [];
-          for (let i = 0; i < balance; i++) {
-            const tokenId = await contract.tokenOfOwnerByIndex(account, i);
-            let tokenURI = await contract.tokenURI(tokenId);
-            fetchedTokens.push({ id: tokenId.toString(), uri: tokenURI });
-          }
-          setTokens(fetchedTokens);
-          setStatus("Ready to mint or register.");
-        } catch (error) {
-          console.error("Could not fetch tokens:", error);
-          setStatus("Could not fetch tokens.");
-        }
-      }
-    };
-    fetchTokens();
-  }, [contract, account]);
-
-  const startCamera = async () => {
-    setStatus("Starting camera... Please allow permission.");
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (error) {
-        console.error("Error accessing webcam:", error);
-        setStatus("Could not access webcam.");
-      }
-    }
-  };
-
-  const takeSnapshot = () => {
-    if (snapshots.length >= 10) {
-      setStatus("You have already taken 10 snapshots.");
-      return;
-    }
-    if (videoRef.current && videoRef.current.srcObject) {
-      const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-      const imageData = canvas.toDataURL('image/jpeg');
-      setSnapshots([...snapshots, imageData]);
-      setStatus(`Snapshot ${snapshots.length + 1} taken.`);
-    }
-  };
-  
-  const handleRegister = async () => {
-    if (snapshots.length < 10 || !username) {
-      alert("Please enter a name and take 10 snapshots.");
-      return;
-    }
-    setIsRegistering(true);
-    setStatus(`Registering ${username}...`);
-    try {
-      const response = await fetch(`${aiApiUrl}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: username, images: snapshots }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        setStatus(`✅ User ${username} registered successfully! You can now switch back to minting.`);
-      } else {
-        setStatus(`❌ Registration failed: ${result.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      setStatus("Error during registration.");
-    }
-    setIsRegistering(false);
-    setSnapshots([]);
-    setUsername('');
-  };
-
-  const handleMint = async () => {
-    if (!videoRef.current || !videoRef.current.srcObject) {
-      alert("Please start the camera first.");
-      return;
-    }
-    setIsLoading(true);
-    setStatus("Capturing image...");
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-    const imageData = canvas.toDataURL('image/jpeg');
-    setStatus("Validating face with AI...");
-    try {
-      const response = await fetch(`${aiApiUrl}/validate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        setStatus(`Face validated! Please approve transaction in MetaMask for user: ${result.name}`);
-        const metadataURI = `ipfs://token-for-${result.name}-${new Date().getTime()}`;
-        const tx = await contract.safeMint(account, metadataURI);
-        await tx.wait();
-        setStatus(`✅ Token minted successfully! Tx: ${tx.hash.substring(0, 10)}...`);
-      } else {
-        setStatus("❌ Face validation failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("An error occurred:", error);
-      setStatus("Error during minting process. Check the console.");
-    }
-    setIsLoading(false);
-  };
+  const {
+    account,
+    tokens,
+    status,
+    isLoading,
+    videoRef,
+    view,
+    username,
+    snapshots,
+    connectWallet,
+    startCamera,
+    handleMint,
+    setView,
+    setUsername,
+    takeSnapshot,
+    handleRegister,
+  } = useApp();
 
   return (
     <Container maxWidth="md">
@@ -237,7 +55,7 @@ function App() {
                 username={username}
                 setUsername={setUsername}
                 handleRegister={handleRegister}
-                isRegistering={isRegistering}
+                isRegistering={isLoading} // Reuse isLoading for the button
               />
             )}
             
