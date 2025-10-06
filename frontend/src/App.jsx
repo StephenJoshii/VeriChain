@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
-
+import contractAbi from './contract-abi.json';
 
 // MUI Components
 import { Container, Box, Divider } from '@mui/material';
@@ -9,11 +9,22 @@ import { Container, Box, Divider } from '@mui/material';
 import Header from './components/Header';
 import MintingUI from './components/MintingUI';
 import TokenGallery from './components/TokenGallery';
-
-// Clear out App.css and index.css
 import './App.css'; 
 
-const contractAbi = [
+// --- Configuration ---
+// Make sure this is your latest deployed address!
+const contractAddress = "0x11625F2a2c4D5D4D06E1c1a81411aF65faa0d9ef";
+const aiApiUrl = "http://127.0.0.1:5001/validate";
+
+function App() {
+  const [account, setAccount] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [tokens, setTokens] = useState([]);
+  const [status, setStatus] = useState("Not connected.");
+  const [isLoading, setIsLoading] = useState(false);
+  const videoRef = useRef(null);
+
+  [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -623,29 +634,18 @@ const contractAbi = [
     }
   ]
 
-// --- Configuration ---
-const contractAddress = "0x11625F2a2c4D5D4D06E1c1a81411aF65faa0d9ef";
-const aiApiUrl = "http://127.0.0.1:5001/validate";
-
-function App() {
-  const [account, setAccount] = useState(null);
-  const [contract, setContract] = useState(null);
-  const [tokens, setTokens] = useState([]);
-  const [status, setStatus] = useState("Not connected.");
-  const [isLoading, setIsLoading] = useState(false);
-  const videoRef = useRef(null);
-
   const connectWallet = async () => {
-    console.log("Connect Wallet button clicked!"); // <-- DEBUGGING LINE
+    console.log("Connect Wallet button clicked!");
 
     if (window.ethereum) {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const address = await signer.getAddress();
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-
+        
         console.log("✅ Wallet connected successfully! Account:", address);
+        
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
         
         setAccount(address);
         setContract(contractInstance);
@@ -681,7 +681,7 @@ function App() {
     };
     fetchTokens();
   }, [contract, account]);
-
+  
   const startCamera = async () => {
     setStatus("Starting camera... Please allow permission.");
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
