@@ -13,6 +13,9 @@ export const useApp = () => {
   const [view, setView] = useState('mint');
   const [username, setUsername] = useState('');
   const [snapshots, setSnapshots] = useState([]);
+  
+  // --- NEW STATE FOR THE UPLOADED FILE ---
+  const [imageFile, setImageFile] = useState(null);
 
   const handleConnectWallet = async () => {
     try {
@@ -40,8 +43,9 @@ export const useApp = () => {
         }
       }
     };
-    loadTokens();
-  }, [account]);
+    // Re-fetch tokens after the account connects OR after a successful mint (status change)
+    if (account) loadTokens();
+  }, [account, status]);
 
   const handleStartCamera = async () => {
     setStatus("Starting camera...");
@@ -88,17 +92,29 @@ export const useApp = () => {
     setUsername('');
   };
 
+  // --- UPDATED MINT FUNCTION ---
   const handleMint = async () => {
+    if (!imageFile) {
+      alert("Please upload an image for your asset first!");
+      return;
+    }
     setIsLoading(true);
     setStatus("Capturing and validating face...");
     try {
       const imageData = CameraService.takeSnapshot(videoRef);
       if (!imageData) throw new Error("Could not capture image from webcam.");
       
-      const result = await ApiService.validateFace(imageData);
-      if (result.success) {
-        setStatus(`Face validated! Please approve transaction for user: ${result.name}`);
-        const metadataURI = `ipfs://token-for-${result.name}-${new Date().getTime()}`;
+      const validationResult = await ApiService.validateFace(imageData);
+      if (validationResult.success) {
+        setStatus(`Face validated! Uploading asset to IPFS...`);
+        
+        // Upload the selected image file to Pinata
+        const ipfsHash = await ApiService.uploadToPinata(imageFile);
+        const metadataURI = `ipfs://${ipfsHash}`;
+        
+        setStatus(`Asset uploaded! Please approve transaction for user: ${validationResult.name}`);
+        
+        // Mint the token with the new IPFS link
         const tx = await Web3Service.mintToken(account, metadataURI);
         setStatus(`✅ Token minted successfully! Tx: ${tx.hash.substring(0, 10)}...`);
       } else {
@@ -127,5 +143,7 @@ export const useApp = () => {
     setUsername,
     takeSnapshot: handleTakeSnapshot,
     handleRegister,
+    // --- NEW HANDLER FOR THE FILE INPUT ---
+    onFileChange: (e) => setImageFile(e.target.files[0]),
   };
 };
