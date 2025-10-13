@@ -23,6 +23,7 @@ function App() {
     setUsername,
     takeSnapshot,
     handleRegister,
+    onFileChange,
   } = useApp();
 
   return (
@@ -44,6 +45,7 @@ function App() {
                 startCamera={startCamera}
                 handleMint={handleMint}
                 isLoading={isLoading}
+                onFileChange={onFileChange}
               />
             ) : (
               <RegistrationUI 
